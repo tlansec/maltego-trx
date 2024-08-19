@@ -7,7 +7,6 @@ from .registry import mapping
 log = logging.getLogger("maltego.server")
 logging.basicConfig(level=logging.DEBUG)
 
-
 URL_TEMPLATE = '/run/<transform_name>/'
 
 
@@ -51,14 +50,17 @@ def run_transform(transform_name, client_msg):
 
 
 app = Flask(__name__)
+app.url_map.strict_slashes = False  # !NOTE - Added to support args in URL with greater ease.
 application = app  # application variable for usage with apache mod wsgi
+
 
 @app.route(URL_TEMPLATE, methods=['GET', 'POST'])
 def transform_runner(transform_name):
     transform_name = transform_name.lower()
     if transform_name in mapping:
         if request.method == 'POST':
-            client_msg = MaltegoMsg(request.data)
+            # !NOTE - modified to support TI-734
+            client_msg = MaltegoMsg(request.data, request=request)
             return run_transform(transform_name, client_msg)
         else:
             return "Transform found with name '%s', you will need to send a POST request to run it." % transform_name, 200

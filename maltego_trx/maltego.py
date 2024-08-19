@@ -1,6 +1,7 @@
 import uuid;
 from xml.dom import minidom
 
+import flask
 from .entities import Phrase
 from .utils import remove_invalid_xml_chars
 
@@ -187,7 +188,7 @@ class MaltegoTransform(object):
         lines.append("<UIMessages>")
         for message in self.UIMessages:
             etype, message = message
-            lines.append(UIM_TEMPLATE % {"text": message, "type": etype})
+            lines.append(UIM_TEMPLATE % {"text": remove_invalid_xml_chars(message), "type": etype})
         lines.append("</UIMessages>")
 
         lines.append("</MaltegoTransformResponseMessage>")
@@ -212,7 +213,7 @@ class MaltegoMsg:
             print("Error: Unable to convert XML value for '%s' to an integer." % tag_name)
             return 0
 
-    def __init__(self, MaltegoXML="", LocalArgs=[]):
+    def __init__(self, MaltegoXML="", LocalArgs=[], request: flask.request = None):
         if MaltegoXML:
             maltego_msg = minidom.parseString(MaltegoXML)
             entities = maltego_msg.getElementsByTagName("Entity")
@@ -228,9 +229,13 @@ class MaltegoMsg:
                 for node in Names:
                     Genealogy.add(node.attributes["Name"].value)
             except:
-                pass 
+                pass
 
-            self.Genealogy = Genealogy
+            self.Genealogy = list(Genealogy)
+            # !NOTE - modified by Volexity on 2022-12-16 to support TI-734
+            if request:
+                self.RequestedURL = request.url
+                self.URLArgs = request.args
 
             self.Weight = self._get_int(entity, "Weight")
             self.Slider = self._get_int(maltego_msg, "Limits", attr_name="SoftLimit")
